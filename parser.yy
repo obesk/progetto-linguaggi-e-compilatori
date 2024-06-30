@@ -102,8 +102,7 @@ proto:
   "id" "(" idseq ")"    { $$ = new PrototypeAST($1,$3);  };
 
 idseq:
-  %empty                { std::vector<std::string> args;
-                         $$ = args; }
+  %empty                { std::vector<std::string> args; $$ = args; }
 | "id" idseq            { $2.insert($2.begin(),$1); $$ = $2; };
 
 %left ":";
@@ -123,8 +122,9 @@ exp:
 | blockexp              { $$ = $1; };
 
 blockexp:
-  "{" vardefs ";" exp "}" { $$ = new BlockExprAST($2,$4); }
-  
+  "{" exp "}"           { $$ = new BlockExprAST({}, $2); }
+| "{" vardefs ";" exp "}" { $$ = new BlockExprAST($2,$4); };
+
 vardefs:
   binding                 { std::vector<VarBindingAST*> definitions;
                             definitions.push_back($1);
@@ -147,15 +147,11 @@ idexp:
 | "id" "(" optexp ")"   { $$ = new CallExprAST($1,$3); };
 
 optexp:
-  %empty                { std::vector<ExprAST*> args;
-			 $$ = args; }
+  %empty                { std::vector<ExprAST*> args; $$ = args; }
 | explist               { $$ = $1; };
 
 explist:
-  exp                   { std::vector<ExprAST*> args;
-                         args.push_back($1);
-			 $$ = args;
-                        }
+  exp                   { std::vector<ExprAST*> args; args.push_back($1); $$ = args; }
 | exp "," explist       { $3.insert($3.begin(), $1); $$ = $3; };
  
 %%
