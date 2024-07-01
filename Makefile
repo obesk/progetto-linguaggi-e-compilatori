@@ -1,7 +1,7 @@
 .PHONY: clean all
 
 LLVM_CONFIG = llvm-config-17
-LLVM_CXXFLAGS = -I/usr/lib/llvm-17/include -std=c++17 -funwind-tables -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS
+LLVM_CXXFLAGS = -I/usr/lib/llvm-17/include -std=c++17 -funwind-tables -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -Wpedantic -Wall
 LLVM_LDFLAGS = -L/usr/lib/llvm-17/lib -lLLVM-17
 
 all: kcomp
@@ -22,10 +22,17 @@ driver.o: driver.cpp parser.hpp driver.hpp
 	clang++ -c driver.cpp $(LLVM_CXXFLAGS)
 
 parser.cpp parser.hpp: parser.yy
-	bison -o parser.cpp parser.yy
+	bison -Wcounterexamples --report=states,itemsets -o parser.cpp parser.yy
 
 scanner.cpp: scanner.ll
 	flex -o scanner.cpp scanner.ll
+
+test: test.o
+	clang++ -o test test.o $(LLVM_LDFLAGS)
+
+test.o: test.cpp
+	clang++ -c test.cpp $(LLVM_CXXFLAGS)
+
 
 clean:
 	rm -f *~ *.o kcomp scanner.cpp parser.cpp parser.hpp

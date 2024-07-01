@@ -5,6 +5,7 @@ parser.cpp
 parser.hpp
 scanner.cpp
 scanner.hpp
+*.output
 
 # Prerequisites
 *.d

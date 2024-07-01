@@ -21,6 +21,8 @@
   class PrototypeAST;
   class BlockExprAST;
   class VarBindingAST;
+  class GlobalVariableAST;
+  class GlobalVariableBindingAST;
 }
 
 // The parsing context.
@@ -54,6 +56,7 @@
   LBRACE     "{"
   RBRACE     "}"
   EXTERN     "extern"
+  GLOB       "global"
   DEF        "def"
   VAR        "var"
 ;
@@ -70,6 +73,8 @@
 %type <RootAST*> top
 %type <FunctionAST*> definition
 %type <PrototypeAST*> external
+%type <GlobalVariableAST*> global
+%type <GlobalVariableBindingAST*> assignment
 %type <PrototypeAST*> proto
 %type <std::vector<std::string>> idseq
 %type <BlockExprAST*> blockexp
@@ -90,13 +95,17 @@ program:
 top:
 %empty                  { $$ = nullptr; }
 | definition            { $$ = $1; }
-| external              { $$ = $1; };
+| external              { $$ = $1; }
+| global                { $$ = $1; };
 
 definition:
   "def" proto exp       { $$ = new FunctionAST($2,$3); $2->noemit(); };
 
 external:
   "extern" proto        { $$ = $2; };
+
+global:
+  "global" "id"         { $$ = new GlobalVariableAST($2); };
 
 proto:
   "id" "(" idseq ")"    { $$ = new PrototypeAST($1,$3);  };
@@ -109,17 +118,22 @@ idseq:
 %left "<" "==";
 %left "+" "-";
 %left "*" "/";
+%right "=";
 
 exp:
   exp "+" exp           { $$ = new BinaryExprAST('+',$1,$3); }
 | exp "-" exp           { $$ = new BinaryExprAST('-',$1,$3); }
 | exp "*" exp           { $$ = new BinaryExprAST('*',$1,$3); }
 | exp "/" exp           { $$ = new BinaryExprAST('/',$1,$3); }
+| assignment            { $$ = $1; }
 | idexp                 { $$ = $1; }
 | "(" exp ")"           { $$ = $2; }
 | "number"              { $$ = new NumberExprAST($1); }
 | expif                 { $$ = $1; }
 | blockexp              { $$ = $1; };
+
+assignment:
+  "id" "=" exp ";"            { $$ = new GlobalVariableBindingAST($1, $3); };
 
 blockexp:
   "{" exp "}"           { $$ = new BlockExprAST({}, $2); }
