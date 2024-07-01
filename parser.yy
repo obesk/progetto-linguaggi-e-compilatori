@@ -57,6 +57,9 @@
   RBRACE     "}"
   EXTERN     "extern"
   GLOB       "global"
+  IF         "if"
+  ELSE       "else"
+  FOR        "for"
   DEF        "def"
   VAR        "var"
 ;
@@ -65,6 +68,7 @@
 %token <double> NUMBER "number"
 %type <ExprAST*> exp
 %type <ExprAST*> idexp
+%type <ExprAST*> ternaryop
 %type <ExprAST*> expif
 %type <ExprAST*> condexp
 %type <std::vector<ExprAST*>> optexp
@@ -115,11 +119,13 @@ idseq:
   %empty                { std::vector<std::string> args; $$ = args; }
 | "id" idseq            { $2.insert($2.begin(),$1); $$ = $2; };
 
+%right "=";
 %left ":";
 %left "<" "==";
 %left "+" "-";
 %left "*" "/";
-%right "=";
+%nonassoc LOWER_THAN_ELSE;
+%nonassoc "else";
 
 exp:
   exp "+" exp           { $$ = new BinaryExprAST('+',$1,$3); }
@@ -129,6 +135,7 @@ exp:
 | idexp                 { $$ = $1; }
 | "(" exp ")"           { $$ = $2; }
 | "number"              { $$ = new NumberExprAST($1); }
+| ternaryop             { $$ = $1; }
 | expif                 { $$ = $1; }
 | blockexp              { $$ = $1; }
 | assignment            { $$ = $1; };
@@ -155,6 +162,11 @@ binding:
   "var" "id" "=" exp      { $$ = new VarBindingAST($2,$4); }
                       
 expif:
+  "if" "(" condexp ")" exp %prec LOWER_THAN_ELSE { $$ = new IfExprAST($3, $5, nullptr); }
+| "if" "(" condexp ")" exp "else" exp            { $$ = new IfExprAST($3, $5, $7); };
+
+
+ternaryop:
   condexp "?" exp ":" exp { $$ = new IfExprAST($1,$3,$5); }
 
 condexp:
