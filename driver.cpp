@@ -204,6 +204,7 @@ Value *IfExprAST::codegen(driver &drv) {
   // vanno creati i corrispondenti basic block nella funzione attuale
   // (ovvero la funzione di cui fa parte il corrente blocco di inserimento)
   Function *function = builder->GetInsertBlock()->getParent();
+
   BasicBlock *TrueBB = BasicBlock::Create(*context, "trueexp", function);
   // Il blocco TrueBB viene inserito nella funzione dopo il blocco corrente
   BasicBlock *FalseBB = BasicBlock::Create(*context, "falseexp");
@@ -214,7 +215,11 @@ Value *IfExprAST::codegen(driver &drv) {
   // FalseBB
 
   // Ora possiamo crere l'istruzione di salto condizionato
-  builder->CreateCondBr(CondV, TrueBB, FalseBB);
+  if (FalseExp) {
+    builder->CreateCondBr(CondV, TrueBB, FalseBB);
+  } else {
+    builder->CreateCondBr(CondV, TrueBB, MergeBB);
+  }
 
   // "Posizioniamo" il builder all'inizio del blocco true,
   // generiamo ricorsivamente il codice da eseguire in caso di
@@ -226,34 +231,37 @@ Value *IfExprAST::codegen(driver &drv) {
     return nullptr;
   builder->CreateBr(MergeBB);
 
-  // Come già ricordato, la chiamata di codegen in TrueExp potrebbe aver
-  // inserito altri blocchi (nel caso in cui la parte trueexp sia a sua volta un
-  // condizionale). Ne consegue che il blocco corrente potrebbe non coincidere
-  // più con TrueBB. Il branch alla parte merge deve però essere effettuato dal
-  // blocco corrente, che dunque va recuperato. Ed è fondamentale sapere da
-  // quale blocco origina il salto perché tale informazione verrà utilizzata da
-  // un'istruzione PHI. Nel caso in cui non sia stato inserito alcun nuovo
-  // blocco, la seguente istruzione corrisponde ad una NO-OP
-  TrueBB = builder->GetInsertBlock();
-  function->insert(function->end(), FalseBB);
-
   // "Posizioniamo" il builder all'inizio del blocco false,
   // generiamo ricorsivamente il codice da eseguire in caso di
   // condizione falsa e, in chiusura di blocco, generiamo il saldo
   // incondizionato al blocco merge
-  builder->SetInsertPoint(FalseBB);
+  Value *FalseV = nullptr;
+  if (FalseExp) {
 
-  Value *FalseV = FalseExp->codegen(drv);
-  if (!FalseV)
-    return nullptr;
+    // Come già ricordato, la chiamata di codegen in TrueExp potrebbe aver
+    // inserito altri blocchi (nel caso in cui la parte trueexp sia a sua volta
+    // un condizionale). Ne consegue che il blocco corrente potrebbe non
+    // coincidere più con TrueBB. Il branch alla parte merge deve però essere
+    // effettuato dal blocco corrente, che dunque va recuperato. Ed è
+    // fondamentale sapere da quale blocco origina il salto perché tale
+    // informazione verrà utilizzata da un'istruzione PHI. Nel caso in cui non
+    // sia stato inserito alcun nuovo blocco, la seguente istruzione corrisponde
+    // ad una NO-OP
+    TrueBB = builder->GetInsertBlock();
+    function->insert(function->end(), FalseBB);
+    builder->SetInsertPoint(FalseBB);
+
+    FalseV = FalseExp->codegen(drv);
+    if (!FalseV)
+      return nullptr;
+  }
   builder->CreateBr(MergeBB);
 
-  // Esattamente per la ragione spiegata sopra (ovvero il possibile inserimento
-  // di nuovi blocchi da parte della chiamata di codegen in FalseExp), andiamo
-  // ora a recuperare il blocco corrente
+  // Esattamente per la ragione spiegata sopra (ovvero il possibile
+  // inserimento di nuovi blocchi da parte della chiamata di codegen in
+  // FalseExp), andiamo ora a recuperare il blocco corrente
   FalseBB = builder->GetInsertBlock();
   function->insert(function->end(), MergeBB);
-
   // Andiamo dunque a generare il codice per la parte dove i due "flussi"
   // di esecuzione si riuniscono. Impostiamo correttamente il builder
   builder->SetInsertPoint(MergeBB);
@@ -270,7 +278,9 @@ Value *IfExprAST::codegen(driver &drv) {
   //    SSA da cui prelevare il valore
   PHINode *PN = builder->CreatePHI(Type::getDoubleTy(*context), 2, "condval");
   PN->addIncoming(TrueV, TrueBB);
-  PN->addIncoming(FalseV, FalseBB);
+  if (FalseV) {
+    PN->addIncoming(FalseV, FalseBB);
+  }
   return PN;
 };
 
