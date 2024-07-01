@@ -78,6 +78,7 @@
 %type <PrototypeAST*> proto
 %type <std::vector<std::string>> idseq
 %type <BlockExprAST*> blockexp
+%type <SeqAST*> statements
 %type <std::vector<VarBindingAST*>> vardefs
 %type <VarBindingAST*> binding
 
@@ -89,7 +90,7 @@ startsymb:
 program                 { drv.root = $1; }
 
 program:
-  %empty                { $$ = new SeqAST(nullptr,nullptr); }
+  %empty                { $$ = new SeqAST(nullptr, nullptr); }
 |  top ";" program      { $$ = new SeqAST($1,$3); };
 
 top:
@@ -125,19 +126,23 @@ exp:
 | exp "-" exp           { $$ = new BinaryExprAST('-',$1,$3); }
 | exp "*" exp           { $$ = new BinaryExprAST('*',$1,$3); }
 | exp "/" exp           { $$ = new BinaryExprAST('/',$1,$3); }
-| assignment            { $$ = $1; }
 | idexp                 { $$ = $1; }
 | "(" exp ")"           { $$ = $2; }
 | "number"              { $$ = new NumberExprAST($1); }
 | expif                 { $$ = $1; }
-| blockexp              { $$ = $1; };
+| blockexp              { $$ = $1; }
+| assignment            { $$ = $1; };
 
 assignment:
-  "id" "=" exp ";"            { $$ = new GlobalVariableBindingAST($1, $3); };
+  "id" "=" exp        { $$ = new GlobalVariableBindingAST($1, $3); };
+
+statements:
+  exp                   { $$ = new SeqAST($1, nullptr); }
+| statements ";" exp           { $$ = new SeqAST($1, $3); };
 
 blockexp:
-  "{" exp "}"           { $$ = new BlockExprAST({}, $2); }
-| "{" vardefs ";" exp "}" { $$ = new BlockExprAST($2,$4); };
+  "{" statements "}"             { $$ = new BlockExprAST({}, $2); }
+| "{" vardefs ";" statements "}" { $$ = new BlockExprAST($2, $4); };
 
 vardefs:
   binding                 { std::vector<VarBindingAST*> definitions;

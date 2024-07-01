@@ -139,10 +139,10 @@ public:
 class BlockExprAST : public ExprAST {
 private:
   std::vector<VarBindingAST *> Def;
-  ExprAST *Val;
+  SeqAST *Val;
 
 public:
-  BlockExprAST(std::vector<VarBindingAST *> Def, ExprAST *Val);
+  BlockExprAST(std::vector<VarBindingAST *> Def, SeqAST *Val);
   Value *codegen(driver &drv) override;
 };
 
@@ -191,7 +191,6 @@ public:
 class GlobalVariableAST : public RootAST {
 private:
   std::string Name;
-  ExprAST *Val;
 
 public:
   GlobalVariableAST(const std::string Name);

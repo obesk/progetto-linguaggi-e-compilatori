@@ -57,14 +57,15 @@ SeqAST::SeqAST(RootAST *first, RootAST *continuation)
 // mediante chiamate ricorsive viene generato il codice di first e
 // poi quello di continuation (con gli opportuni controlli di "esistenza")
 Value *SeqAST::codegen(driver &drv) {
-  if (first != nullptr) {
-    Value *f = first->codegen(drv);
-  } else {
-    if (continuation == nullptr)
-      return nullptr;
+  if (first == nullptr) {
+    return nullptr;
+  }
+  Value *f = first->codegen(drv);
+  if (continuation == nullptr) {
+    return f;
   }
   Value *c = continuation->codegen(drv);
-  return nullptr;
+  return c;
 };
 
 /********************* Number Expression Tree *********************/
@@ -274,7 +275,7 @@ Value *IfExprAST::codegen(driver &drv) {
 };
 
 /********************** Block Expression Tree *********************/
-BlockExprAST::BlockExprAST(std::vector<VarBindingAST *> Def, ExprAST *Val)
+BlockExprAST::BlockExprAST(std::vector<VarBindingAST *> Def, SeqAST *Val)
     : Def(std::move(Def)), Val(Val){};
 
 Value *BlockExprAST::codegen(driver &drv) {
