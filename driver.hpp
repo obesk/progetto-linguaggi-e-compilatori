@@ -111,6 +111,15 @@ public:
   Value *codegen(driver &drv) override;
 };
 
+class UnaryExprAST : public ExprAST {
+  char Opcode;
+  ExprAST *Operand;
+
+public:
+  UnaryExprAST(char Opcode, ExprAST *Operand);
+  Value *codegen(driver &drv) override;
+};
+
 /// CallExprAST - Classe per la rappresentazione di chiamate di funzione
 class CallExprAST : public ExprAST {
 private:

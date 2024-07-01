@@ -149,6 +149,23 @@ Value *BinaryExprAST::codegen(driver &drv) {
   }
 };
 
+// Unary expression tree
+UnaryExprAST::UnaryExprAST(char Opcode, ExprAST *Operand)
+    : Opcode(Opcode), Operand(Operand){};
+
+Value *UnaryExprAST::codegen(driver &drv) {
+  llvm::Value *OperandV = Operand->codegen(drv);
+  if (!OperandV)
+    return nullptr;
+
+  switch (Opcode) {
+  case '-':
+    return builder->CreateFNeg(OperandV, "negres");
+  default:
+    return LogErrorV("Operatore unario non supportato");
+  }
+}
+
 /********************* Call Expression Tree ***********************/
 /* Call Expression Tree */
 CallExprAST::CallExprAST(std::string Callee, std::vector<ExprAST *> Args)

@@ -23,6 +23,8 @@
   class VarBindingAST;
   class GlobalVariableAST;
   class GlobalVariableBindingAST;
+  class BinaryExprAST;
+  class UnaryExprAST;
 }
 
 // The parsing context.
@@ -133,6 +135,7 @@ exp:
 | exp "*" exp           { $$ = new BinaryExprAST('*',$1,$3); }
 | exp "/" exp           { $$ = new BinaryExprAST('/',$1,$3); }
 | idexp                 { $$ = $1; }
+| "-" exp               { $$ = new UnaryExprAST('-', $2); }
 | "(" exp ")"           { $$ = $2; }
 | "number"              { $$ = new NumberExprAST($1); }
 | ternaryop             { $$ = $1; }
