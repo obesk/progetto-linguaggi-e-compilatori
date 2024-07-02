@@ -144,6 +144,21 @@ public:
   Value *codegen(driver &drv) override;
 };
 
+/// forExprAST
+// TODO: gestire anche for che prende un assigment come primo parametro?
+class ForExprAST : public ExprAST {
+private:
+  VarBindingAST *Def;
+  ExprAST *Cond;
+  VariableAssignmentAST *Ass;
+  ExprAST *Body;
+
+public:
+  ForExprAST(VarBindingAST *Def, ExprAST *Cond, VariableAssignmentAST *Ass,
+             ExprAST *Body);
+  Value *codegen(driver &drv) override;
+};
+
 /// BlockExprAST
 class BlockExprAST : public ExprAST {
 private:
@@ -208,13 +223,13 @@ public:
 };
 
 // classe GlabalVariableBindingAST
-class GlobalVariableBindingAST : public ExprAST {
+class VariableAssignmentAST : public ExprAST {
 private:
   const std::string Name;
   ExprAST *Val;
 
 public:
-  GlobalVariableBindingAST(const std::string Name, ExprAST *Val);
+  VariableAssignmentAST(const std::string Name, ExprAST *Val);
   Value *codegen(driver &drv) override;
   const std::string &getName() const;
 };

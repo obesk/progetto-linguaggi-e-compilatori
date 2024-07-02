@@ -301,6 +301,66 @@ Value *IfExprAST::codegen(driver &drv) {
   return PN;
 };
 
+ForExprAST::ForExprAST(VarBindingAST *Def, ExprAST *Cond,
+                       VariableAssignmentAST *Ass, ExprAST *Body)
+    : Def(Def), Cond(Cond), Ass(Ass), Body(Body){};
+
+Value *ForExprAST::codegen(driver &drv) {
+  // inizializzazione delle variabili nello scope
+
+  AllocaInst *BoundVal = Def->codegen(drv);
+  if (!BoundVal)
+    return nullptr;
+
+  AllocaInst *OGValue = drv.NamedValues[Def->getName()];
+
+  drv.NamedValues[Def->getName()] = BoundVal;
+
+  // Recupera la funzione corrente.
+  llvm::Function *TheFunction = builder->GetInsertBlock()->getParent();
+
+  // Crea i blocchi di base per il ciclo.
+  llvm::BasicBlock *CondBB =
+      llvm::BasicBlock::Create(*context, "cond", TheFunction);
+  llvm::BasicBlock *LoopBB = llvm::BasicBlock::Create(*context, "loop");
+  llvm::BasicBlock *AfterBB = llvm::BasicBlock::Create(*context, "afterloop");
+
+  // Salta al blocco di condizione.
+  builder->CreateBr(CondBB);
+  builder->SetInsertPoint(CondBB);
+
+  // Genera il codice per la condizione.
+  llvm::Value *CondVal = Cond->codegen(drv);
+  if (!CondVal)
+    return nullptr;
+
+  // Converti la condizione in un booleano.
+  builder->CreateCondBr(CondVal, LoopBB, AfterBB);
+
+  // Aggiungi il blocco di loop alla funzione.
+  TheFunction->insert(TheFunction->end(), LoopBB);
+  builder->SetInsertPoint(LoopBB);
+
+  // Genera il codice per il corpo del ciclo.
+  if (!Body->codegen(drv))
+    return nullptr;
+
+  // Genera il codice per lo step.
+  if (Ass && !Ass->codegen(drv))
+    return nullptr;
+
+  // Salta al blocco di condizione per il prossimo ciclo.
+  builder->CreateBr(CondBB);
+
+  // Aggiungi il blocco after alla funzione.
+  TheFunction->insert(TheFunction->end(), AfterBB);
+  builder->SetInsertPoint(AfterBB);
+
+  // Prima di uscire dal blocco, si ripristina lo scope esterno al costrutto
+  drv.NamedValues[Def->getName()] = OGValue;
+  return CondVal;
+}
+
 /********************** Block Expression Tree *********************/
 BlockExprAST::BlockExprAST(std::vector<VarBindingAST *> Def, SeqAST *Val)
     : Def(std::move(Def)), Val(Val){};
@@ -539,23 +599,31 @@ Value *GlobalVariableAST::codegen(driver &drv) {
   return GV;
 };
 
-GlobalVariableBindingAST::GlobalVariableBindingAST(const std::string Name,
-                                                   ExprAST *Val)
+VariableAssignmentAST::VariableAssignmentAST(const std::string Name,
+                                             ExprAST *Val)
     : Name(Name), Val(Val){};
 
-const std::string &GlobalVariableBindingAST::getName() const { return Name; };
+const std::string &VariableAssignmentAST::getName() const { return Name; };
 
-Value *GlobalVariableBindingAST::codegen(driver &drv) {
-  GlobalVariable *GV = module->getNamedGlobal(Name);
-  if (!GV) {
-    return LogErrorV("Variabile globale " + Name + " non definita");
-  }
-
+Value *VariableAssignmentAST::codegen(driver &drv) {
   Value *BoundVal = Val->codegen(drv);
   if (!BoundVal) {
     return nullptr;
   }
 
-  builder->CreateStore(BoundVal, GV);
-  return BoundVal;
+  AllocaInst *A = drv.NamedValues[Name];
+  if (A) {
+    builder->CreateStore(BoundVal, A);
+    return BoundVal;
+  }
+
+  GlobalVariable *GV = module->getNamedGlobal(Name);
+  if (GV) {
+    builder->CreateStore(BoundVal, GV);
+    return BoundVal;
+  }
+
+  return LogErrorV("Variabile " + Name +
+                   " non definita, impossibile assegnare valore");
+  return nullptr;
 };

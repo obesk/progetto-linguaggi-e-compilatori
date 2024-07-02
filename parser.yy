@@ -22,9 +22,11 @@
   class BlockExprAST;
   class VarBindingAST;
   class GlobalVariableAST;
-  class GlobalVariableBindingAST;
+  class VariableAssignmentAST;
   class BinaryExprAST;
   class UnaryExprAST;
+  class IfExprAST;
+  class ForExprAST;
 }
 
 // The parsing context.
@@ -72,6 +74,7 @@
 %type <ExprAST*> idexp
 %type <ExprAST*> ternaryop
 %type <ExprAST*> expif
+%type <ExprAST*> expfor
 %type <ExprAST*> condexp
 %type <std::vector<ExprAST*>> optexp
 %type <std::vector<ExprAST*>> explist
@@ -80,7 +83,7 @@
 %type <FunctionAST*> definition
 %type <PrototypeAST*> external
 %type <GlobalVariableAST*> global
-%type <GlobalVariableBindingAST*> assignment
+%type <VariableAssignmentAST*> assignment
 %type <PrototypeAST*> proto
 %type <std::vector<std::string>> idseq
 %type <BlockExprAST*> blockexp
@@ -140,11 +143,12 @@ exp:
 | "number"              { $$ = new NumberExprAST($1); }
 | ternaryop             { $$ = $1; }
 | expif                 { $$ = $1; }
+| expfor                { $$ = $1; }
 | blockexp              { $$ = $1; }
 | assignment            { $$ = $1; };
 
 assignment:
-  "id" "=" exp        { $$ = new GlobalVariableBindingAST($1, $3); };
+  "id" "=" exp        { $$ = new VariableAssignmentAST($1, $3); };
 
 statements:
   exp                   { $$ = new SeqAST($1, nullptr); }
@@ -167,6 +171,9 @@ binding:
 expif:
   "if" "(" condexp ")" exp %prec LOWER_THAN_ELSE { $$ = new IfExprAST($3, $5, nullptr); }
 | "if" "(" condexp ")" exp "else" exp            { $$ = new IfExprAST($3, $5, $7); };
+
+expfor:
+  "for" "(" binding ";" condexp ";" assignment ")" exp %prec LOWER_THAN_ELSE { $$ = new ForExprAST($3, $5, $7, $9); }
 
 
 ternaryop:
