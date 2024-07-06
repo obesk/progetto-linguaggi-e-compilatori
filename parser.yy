@@ -48,6 +48,7 @@
   COMMA      ","
   MINUS      "-"
   PLUS       "+"
+  INC        "++"
   STAR       "*"
   SLASH      "/"
   LPAREN     "("
@@ -84,6 +85,7 @@
 %type <PrototypeAST*> external
 %type <GlobalVariableAST*> global
 %type <VariableAssignmentAST*> assignment
+%type <VariableAssignmentAST*> increment
 %type <PrototypeAST*> proto
 %type <std::vector<std::string>> idseq
 %type <BlockExprAST*> blockexp
@@ -129,6 +131,7 @@ idseq:
 %left "<" "==";
 %left "+" "-";
 %left "*" "/";
+%right "++";
 %nonassoc LOWER_THAN_ELSE;
 %nonassoc "else";
 
@@ -149,6 +152,10 @@ exp:
 
 assignment:
   "id" "=" exp        { $$ = new VariableAssignmentAST($1, $3); };
+| increment           { $$ = $1; }
+
+increment:
+  "++" "id"           { $$ = new VariableAssignmentAST($2, new BinaryExprAST('+', new VariableExprAST($2), new NumberExprAST(1))); }
 
 statements:
   exp                   { $$ = new SeqAST($1, nullptr); }
