@@ -7,6 +7,9 @@ scanner.cpp
 scanner.hpp
 *.output
 
+test
+test.cpp
+
 # Prerequisites
 *.d
 
